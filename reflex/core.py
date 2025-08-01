@@ -2,7 +2,7 @@ from typing import Any, Callable, Dict, Optional, Tuple, Mapping, Union
 import inspect
 
 from .config import ReflexOptions
-from .errors import AliasArgumentError, AliasNameConflictError
+from .errors import ReflexArgumentError, ReflexNameConflictError
     
 def create_alias_function(
         fn: Union[Callable[..., Any], staticmethod, classmethod],
@@ -31,7 +31,7 @@ def create_alias_function(
     arg_map (Optional[Mapping[str, str]]):
         A dictionary mapping original argument names to their shorter alias forms.
 
-    options (AliasedClassOptions):
+    options (ReflexsiveOptions):
         Options used when creating the alias function.
 
     Returns
@@ -68,7 +68,7 @@ def create_alias_function(
 
     for arg in (arg_map or {}):
         if not options.allow_kwargs_override and arg not in valid_param_names:
-            raise AliasArgumentError(
+            raise ReflexArgumentError(
                 f'Cannot alias parameter \'{arg}\'; it is not an explicitly named parameter of \'{real_fn.__name__}\'.'
             )
 
@@ -77,7 +77,7 @@ def create_alias_function(
         if arg_map:
             for original_name in arg_map:
                 if original_name in kwargs:
-                    raise AliasArgumentError(
+                    raise ReflexArgumentError(
                         f'Argument \'{original_name}\' is not valid in alias \'{alias_name}\'; '
                         f'use \'{arg_map[original_name]}\' instead.'
                     )   
@@ -161,8 +161,8 @@ class ReflexsiveMeta(type):
 
     Raises
     ------
-        AliasNameConflictError: If any alias has a conflicting name with another alias or another class member.
-        AliasArgumentError: If an invalid argument is attempted to be aliased.
+        ReflexNameConflictError: If any alias has a conflicting name with another alias or another class member.
+        ReflexArgumentError: If an invalid argument is attempted to be aliased.
         AliasConfigurationError: If an invalid option is passed to the metaclass.
     '''
 
@@ -190,10 +190,10 @@ class ReflexsiveMeta(type):
                 for alias, argmap in func._aliases.items():
                     if alias in namespace:
                         if alias in alias_map:
-                            raise AliasNameConflictError(
+                            raise ReflexNameConflictError(
                                 f"Class '{name}' already has alias '{alias}' from '{alias_map[alias]}'."
                             )
-                        raise AliasNameConflictError(
+                        raise ReflexNameConflictError(
                             f"Alias '{alias}' conflicts with an existing attribute on class '{name}'."
                         )
                     alias_fn = create_alias_function(cls_or_static, alias, argmap, options)
@@ -232,8 +232,8 @@ class Reflexsive(metaclass=ReflexsiveMeta):
 
     Raises
     ------
-        AliasNameConflictError: If any alias has a conflicting name with another alias or another class member.
-        AliasArgumentError: If an invalid argument is attempted to be aliased.
+        ReflexNameConflictError: If any alias has a conflicting name with another alias or another class member.
+        ReflexArgumentError: If an invalid argument is attempted to be aliased.
         AliasConfigurationError: If an invalid option is passed to the metaclass.
     '''
     @staticmethod
@@ -243,7 +243,7 @@ class Reflexsive(metaclass=ReflexsiveMeta):
 
         This decorator registers a short alias name for a method, optionally providing a mapping
         from original argument names to shorter aliases. The alias metadata is stored on the function
-        for later processing by the `@aliased_class` system, which creates the actual bound aliases.
+        for later processing by the `@Reflexsive.alias` system, which creates the actual bound aliases.
 
         This decorator supports instance methods, static methods, and class methods.
 
@@ -264,10 +264,10 @@ class Reflexsive(metaclass=ReflexsiveMeta):
 
         Raises
         ------
-        AliasArgumentError:
+        ReflexArgumentError:
             If the alias attempts to rename reserved arguments like '*args' or '**kwargs'.
 
-        AliasNameConflictError:
+        ReflexNameConflictError:
             If the alias name is already registered for the same function.
         '''
         def decorator(fn):
@@ -282,14 +282,14 @@ class Reflexsive(metaclass=ReflexsiveMeta):
             # and reject/accept in the class decorator, as its determiend by a option
             for original_name in arg_map:
                 if original_name in ('args', 'kwargs'):
-                    raise AliasArgumentError(
+                    raise ReflexArgumentError(
                         f'Cannot alias parameter \'{original_name}\'; \'*args\' and \'**kwargs\' are reserved.'
                     )
             
             # Preserve existing aliases if already decorated
             existing_aliases = getattr(real_fn, '_aliases', {})
             if _alias in existing_aliases:
-                raise AliasNameConflictError(
+                raise ReflexNameConflictError(
                     f'Alias name \'{_alias}\' is already defined for function \'{real_fn.__name__}\'.'
                 )
 
