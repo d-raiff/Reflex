@@ -1,4 +1,4 @@
-name: CI
+name: Test & Lint (Python 3.9–3.12)
 
 on:
   push:
@@ -8,21 +8,22 @@ on:
 
 jobs:
   test:
+    name: Test & Lint: Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ['3.9', '3.10', '3.11', '3.12']
 
     steps:
-      - name: Checkout code
+      - name: 🛎️ Checkout source
         uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: 🐍 Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Cache pip
+      - name: 📦 Cache pip
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
@@ -30,21 +31,21 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
-      - name: Install dependencies
+      - name: 📥 Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt || true
           pip install pytest pytest-cov mypy
           pip install -e .
 
-      - name: Run tests with coverage
+      - name: ✅ Run tests with coverage
         run: |
           pytest --cov=reflexsive --cov-config=pyproject.toml --cov-report=term --cov-report=xml
 
-      - name: Run mypy
+      - name: 🔍 Run type checks with mypy
         run: mypy reflexsive
 
-      - name: Upload coverage to Codecov
+      - name: 📈 Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
