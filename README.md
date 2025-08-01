@@ -1,14 +1,18 @@
-# pyalias
+# Reflexsive
+
+<p align="center">
+  <a href="https://github.com/d-raiff/Reflexsive/actions/workflows/ci.yml">
+    <img src="https://github.com/d-raiff/Reflexsive/actions/workflows/ci.yml/badge.svg" alt="CI"/>
+  </a>
+  <a href="https://github.com/d-raiff/Reflexsive/actions/workflows/ci.yml">
+    <img src="https://codecov.io/gh/d-raiff/Reflexsive/branch/main/graph/badge.svg" alt="codedev"/>
+  </a>
+  <a href="https://github.com/d-raiff/Reflexsive/actions/workflows/ci.yml">
+    <img src="https://img.shields.io/github/license/d-raiff/Reflexsive.svg" alt="license"/>
+  </a>
+</p>
 
 A lightweight Python library that enables concise method aliasing with optional argument remapping. Designed for ergonomic command interfaces, alternative method names, and API compatibility layers.
-
----
-TODO: Update this readme.md
-NOTE: using classmethod/staticmethod decorators before `@alias` makes Pylance complain - but does work at runtime 
-
-![CI](https://github.com/d-raiff/Reflex/actions/workflows/ci.yml/badge.svg)
-
-[![codecov](https://codecov.io/gh/d-raiff/Reflex/branch/main/graph/badge.svg)](https://codecov.io/gh/d-raiff/Reflex/)
 
 ---
 
@@ -27,15 +31,15 @@ NOTE: using classmethod/staticmethod decorators before `@alias` makes Pylance co
 ## 🔧 Installation
 
 ```bash
-pip install pyalias
+pip install reflexsive
 ```
 
 ## 🚀 Usage
 ```python
-from alias import AliasedClass
+from reflexsive import Reflexsive
 
-class MyAPI(AliasedClass):
-    @AliasedClass.alias('short', username='u', password='p')
+class MyAPI(Reflexsive):
+    @Reflexsive.alias('short', username='u', password='p')
     def authenticate(self, username, password):
         return f"{username}:{password}"
 
@@ -47,7 +51,7 @@ print(obj.short(u='admin', p='123'))        # Keyword aliasing
 
 ## ⚙️ Configuration Options
 
-When using `class A(AliasedClass, ...)`, you can pass configuration flags:
+When using `class A(Reflexsive, ...)`, you can pass configuration flags:
 
 | Option                  | Type  | Default | Description                                 |
 |-------------------------|-------|---------|---------------------------------------------|
@@ -58,22 +62,20 @@ When using `class A(AliasedClass, ...)`, you can pass configuration flags:
 
 ### Example 1: Without options
 ```python
-class Example(AliasedClass):
+class Example(Reflexsive):
     ...
 ```
 
 ### Example 2: With options
 ```python
-class Example(AliasedClass, create_pyi_stub=True, alias_prefix='a_'):
+class Example(Reflexsive, create_pyi_stub=True, alias_prefix='a_'):
     ...
 ```
 
 ## 🧪 Testing
 
-Tests are provided using pytest. To run the test suite:
-```base
-python -m pytest alias/alias/test.py
-```
+Tests are provided using pytest.\n
+
 Tests cover:
   - Alias mapping (positional and keyword)
   - Class/Static method support
@@ -90,4 +92,6 @@ The library defines the following custom exceptions:
   - `AliasArgumentError`: Raised when alias mappings include invalid or forbidden parameters (e.g., `*args`).
   - `AliasConfigurationError`: Raised when invalid configuration options are passed to `@aliased_class`.
 
+## Notes
 
+- Using classmethod/staticmethod decorators before `@alias` makes Pylance complain - but does work at runtime 
