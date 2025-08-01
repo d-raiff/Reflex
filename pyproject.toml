@@ -15,8 +15,8 @@ classifiers = [
 Homepage = "https://github.com/d-raiff/Reflex"
 
 [tool.setuptools]
-packages = ["pyalias"]
+packages = ["reflex"]
 
 [tool.setuptools.package-data]
 # Include package data specified in MANIFEST.in, or default behavior
-"pyalias" = ["*"]
+"reflex" = ["*"]
