@@ -40,11 +40,8 @@ def create_alias_function(
         A new method with remapped arguments, the same behavior as the original, and a short alias name.
     '''
     reverse_map = {v: k for k, v in arg_map.items()} if arg_map else {}
-    
-    is_staticmethod = isinstance(fn, staticmethod)
-    is_classmethod  = isinstance(fn, classmethod)
 
-    real_fn = fn.__func__ if (is_staticmethod or is_classmethod) else fn
+    real_fn = fn.__func__ if isinstance(fn, (staticmethod, classmethod)) else fn
     sig = inspect.signature(real_fn)
 
     # Determine first argument name (self/cls) if present
@@ -124,9 +121,9 @@ def create_alias_function(
     alias_fn.__name__ = alias_name
     alias_fn.__doc__ = f'[alias for {real_fn.__name__}]'
 
-    if is_staticmethod:
+    if isinstance(fn, staticmethod):
         return staticmethod(alias_fn)
-    elif is_classmethod:
+    elif isinstance(fn, classmethod):
         return classmethod(alias_fn)
     else:
         return alias_fn

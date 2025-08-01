@@ -125,8 +125,8 @@ def stub_render_imports(
     '''
     lines = []
     for module, names in sorted(type_map.items()):
-        names = ', '.join(sorted(names))
-        line = f'from {module} import {names}'
+        name = ', '.join(sorted(names))
+        line = f'from {module} import {name}'
         lines.append(line)
     return '\n'.join(lines)
 
