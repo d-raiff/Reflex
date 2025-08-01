@@ -10,12 +10,12 @@ on:
 
 jobs:
   tests:
-    name: 🧪 Run Tests (Python 3.9-3.12)
-    runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13']
 
+    name: ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
     steps:
       - name: 🛎️ Checkout source
         uses: actions/checkout@v4
