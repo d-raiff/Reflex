@@ -1,4 +1,4 @@
-from .core import Reflexive
+from .core import Reflexsive
 from .config import ReflexsiveOptions
 from .stubgen import (
     stub_generate_signature,
@@ -14,7 +14,7 @@ from .errors import (
 
 __all__ = [
     # Public core API
-    "Reflexive",
+    "Reflexsive",
     "ReflexsiveOptions",
 
     # Stub generation
