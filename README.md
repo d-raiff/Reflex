@@ -3,6 +3,14 @@
 A lightweight Python library that enables concise method aliasing with optional argument remapping. Designed for ergonomic command interfaces, alternative method names, and API compatibility layers.
 
 ---
+TODO: Update this readme.md
+NOTE: using classmethod/staticmethod decorators before `@alias` makes Pylance complain - but does work at runtime 
+
+![CI](https://github.com/d-raiff/Reflex/actions/workflows/ci.yml/badge.svg)
+
+[![codecov](https://codecov.io/gh/d-raiff/Reflex/branch/main/graph/badge.svg)](https://codecov.io/gh/d-raiff/Reflex/)
+
+---
 
 ## ✨ Features
 

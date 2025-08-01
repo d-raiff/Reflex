@@ -5,18 +5,54 @@ description = "Method aliasing system with argument remapping and optional stub 
 authors = [
     { name = "Dylan Raiff" }
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.9,<3.13"
 classifiers = [
+    "Development Status :: 3 - Alpha",
     "Programming Language :: Python :: 3",
-    "Operating System :: OS Independent"
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: MIT License"
 ]
 
 [project.urls]
 Homepage = "https://github.com/d-raiff/Reflex"
+Repository = "https://github.com/d-raiff/Reflex"
+Issues = "https://github.com/d-raiff/Reflex/issues"
 
 [tool.setuptools]
 packages = ["reflex"]
+# Or: packages = { find = {} }
 
 [tool.setuptools.package-data]
-# Include package data specified in MANIFEST.in, or default behavior
 "reflex" = ["*"]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+# -------------------------------
+# ✅ Pytest configuration
+# -------------------------------
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "--strict-markers --tb=short --disable-warnings"
+testpaths = ["tests"]
+
+# -------------------------------
+# ✅ Mypy configuration
+# -------------------------------
+[tool.mypy]
+python_version = "3.9"
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+ignore_missing_imports = true
+no_implicit_optional = true
+show_error_codes = true
+pretty = true
+namespace_packages = true
+explicit_package_bases = true
