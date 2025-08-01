@@ -43,7 +43,7 @@ jobs:
           pytest --cov=reflexsive --cov-config=pyproject.toml --cov-report=term --cov-report=xml
 
       - name: 🔍 Run type checks with mypy
-        run: mypy reflexsive
+        run: mypy src/reflexsive
 
       - name: 📈 Upload coverage to Codecov
         uses: codecov/codecov-action@v4

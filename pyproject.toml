@@ -34,7 +34,10 @@ Repository = "https://github.com/d-raiff/Reflex"
 Issues = "https://github.com/d-raiff/Reflex/issues"
 
 [tool.setuptools]
-packages = ["reflexsive"]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.setuptools.package-data]
 "reflexsive" = ["*"]
@@ -57,7 +60,7 @@ show_missing = true
 skip_covered = true
 
 [tool.mypy]
-python_version = "3.9"
+mypy_path = "src"
 warn_unused_configs = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
