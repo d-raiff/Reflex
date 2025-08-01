@@ -1,8 +1,8 @@
 import pytest
 
-from reflex.core import Reflexsive
-from reflex.config import ReflexOptions
-from reflex.errors import ReflexConfigurationError
+from reflexsive.core import Reflexsive
+from reflexsive.config import ReflexsiveOptions
+from reflexsive.errors import ReflexsiveConfigurationError
 
 def test_valid_alias_configuration_options():
     '''
@@ -10,7 +10,7 @@ def test_valid_alias_configuration_options():
     an `AliasConfigurationError`. This protects the configuration surface and 
     prevents silent misconfiguration by rejecting unknown keywords.
     '''
-    opt = ReflexOptions(allow_kwargs_override=True, alias_prefix='Sure_')
+    opt = ReflexsiveOptions(allow_kwargs_override=True, alias_prefix='Sure_')
 
     assert opt.allow_kwargs_override == True
     assert opt.alias_prefix == 'Sure_'
@@ -21,8 +21,8 @@ def test_invalid_alias_configuration_option_should_fail():
     an `AliasConfigurationError`. This protects the configuration surface and 
     prevents silent misconfiguration by rejecting unknown keywords.
     '''
-    with pytest.raises(ReflexConfigurationError, match='Invalid Reflexsive option: \'unexpose_alias_map\''):
-        ReflexOptions(unexpose_alias_map=False, docstring_alias_hints=True)
+    with pytest.raises(ReflexsiveConfigurationError, match='Invalid Reflexsive option: \'unexpose_alias_map\''):
+        ReflexsiveOptions(unexpose_alias_map=False, docstring_alias_hints=True)
 
 def test_alias_prefix_option():
     '''

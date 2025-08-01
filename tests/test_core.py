@@ -1,6 +1,6 @@
 import pytest
-from reflex.core import Reflexsive
-from reflex.errors import *
+from reflexsive.core import Reflexsive
+from reflexsive.errors import *
 
 def test_original_function_is_unmodified():
     '''
@@ -77,7 +77,7 @@ def test_original_and_alias_parameter_should_fail():
             return (a, b, args, c, d, kwargs)
 
     obj = AliasTest5()
-    with pytest.raises(ReflexArgumentError, match='Argument \'a\' is not valid in alias \'full\';'):
+    with pytest.raises(ReflexsiveArgumentError, match='Argument \'a\' is not valid in alias \'full\';'):
         obj.full(a='A', a1='AA', c1='C')  # type: ignore
 
 def test_multiple_aliases_per_function():
@@ -100,7 +100,7 @@ def test_duplicate_alias_names_should_fail():
     Verifies that applying two aliases with the same alias name (`a1`) to a single function raises a `AliasNameConflictError`.
     This prevents ambiguity about which mapping should take precedence.
     '''
-    with pytest.raises(ReflexNameConflictError, match='Alias name \'a1\' is already defined for function \'login\'.'):
+    with pytest.raises(ReflexsiveNameConflictError, match='Alias name \'a1\' is already defined for function \'login\'.'):
         class AliasTest7(Reflexsive):
             @Reflexsive.alias('a1', user='u')
             @Reflexsive.alias('a1', user='usr')
@@ -112,7 +112,7 @@ def test_alias_name_collision_across_functions_should_fail():
     Checks that two different methods cannot define the same alias name (`conflict`). Ensures that the metaclass 
     detects alias collisions across the class namespace and raises a ValueError.
     '''
-    with pytest.raises(ReflexNameConflictError, match='Class \'AliasTest8\' already has alias \'conflict\' from \'method_one\''):
+    with pytest.raises(ReflexsiveNameConflictError, match='Class \'AliasTest8\' already has alias \'conflict\' from \'method_one\''):
         class AliasTest8(Reflexsive):
             @Reflexsive.alias('conflict', x='a')
             def method_one(self, x):
@@ -280,7 +280,7 @@ def test_alias_star_args_should_fail():
     This test ensures that aliasing is only allowed for explicitly named parameters and that the system
     correctly rejects attempts to remap `*args`, which do not have a fixed name in the function signature.
     '''
-    with pytest.raises(ReflexArgumentError, match='Cannot alias parameter \'args\';'):
+    with pytest.raises(ReflexsiveArgumentError, match='Cannot alias parameter \'args\';'):
         class AliasTest18(Reflexsive):
             @Reflexsive.alias('bad', args='a')
             def method(self, *args):
@@ -291,7 +291,7 @@ def test_alias_rejects_non_explicit_parameter_should_fail():
     Tests that aliasing fails when attempting to map a non-explicit parameter (e.g., from `**kwargs`).
     Verifies that a `AliasArgumentError` is raised if the aliased parameter is not declared in the function signature.
     '''
-    with pytest.raises(ReflexArgumentError, match='Cannot alias parameter \'x\''):
+    with pytest.raises(ReflexsiveArgumentError, match='Cannot alias parameter \'x\''):
         class AliasTest22(Reflexsive):
             @Reflexsive.alias('bad_alias', x='a')  # 'x' is not explicitly defined
             def run(self, **kwargs):

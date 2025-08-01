@@ -1,6 +1,6 @@
 import pytest
 
-from reflex.stubgen import stub_update_class
+from reflexsive.stubgen import stub_update_class
 
 def test_append_new_class_to_empty_stub():
     '''
