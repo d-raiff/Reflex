@@ -1,10 +1,12 @@
 [project]
 name = "reflexsive"
-version = "0.0.1"
+dynamic = ["version"]
 description = "Method aliasing system with argument remapping and optional stub generation"
+readme = { file = "README.md", content-type = "text/markdown" }
 authors = [
     { name = "Dylan Raiff" }
 ]
+license = { file = "LICENSE" }
 requires-python = ">=3.9,<3.13"
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -16,6 +18,15 @@ classifiers = [
     "Operating System :: OS Independent",
     "License :: OSI Approved :: MIT License"
 ]
+keywords = [
+    "alias", 
+    "aliasing", 
+    "function remapping", 
+    "method remapping", 
+    "decorator", 
+    "python", 
+    "reflex"
+]
 
 [project.urls]
 Homepage = "https://github.com/d-raiff/Reflex"
@@ -24,18 +35,14 @@ Issues = "https://github.com/d-raiff/Reflex/issues"
 
 [tool.setuptools]
 packages = ["reflexsive"]
-# Or: packages = { find = {} }
 
 [tool.setuptools.package-data]
 "reflexsive" = ["*"]
 
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=61.0", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
-# -------------------------------
-# ✅ Pytest configuration
-# -------------------------------
 [tool.pytest.ini_options]
 minversion = "7.0"
 addopts = "--strict-markers --tb=short --disable-warnings"
@@ -49,9 +56,6 @@ source = ["reflexsive"]
 show_missing = true
 skip_covered = true
 
-# -------------------------------
-# ✅ Mypy configuration
-# -------------------------------
 [tool.mypy]
 python_version = "3.9"
 warn_unused_configs = true
@@ -64,3 +68,7 @@ show_error_codes = true
 pretty = true
 namespace_packages = true
 explicit_package_bases = true
+
+[tool.setuptools_scm]
+version_scheme = "post-release"
+local_scheme = "node-and-date"
