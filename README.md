@@ -1,13 +1,13 @@
 # Reflexsive
 
 <p align="center">
-  <a href="https://github.com/d-raiff/Reflexsive/actions/workflows/ci.yml">
-    <img src="https://github.com/d-raiff/Reflexsive/actions/workflows/ci.yml/badge.svg" alt="CI"/>
+  <a href="https://github.com/d-raiff/Reflexsive/actions/workflows/test_and_lint.yml">
+    <img src="https://github.com/d-raiff/Reflexsive/actions/workflows/test_and_lint.yml/badge.svg" alt="test_and_lint"/>
   </a>
-  <a href="https://github.com/d-raiff/Reflexsive/actions/workflows/ci.yml">
+  <a href="https://github.com/d-raiff/Reflexsive/actions/workflows/test_and_lint.yml">
     <img src="https://codecov.io/gh/d-raiff/Reflexsive/branch/main/graph/badge.svg" alt="codedev"/>
   </a>
-  <a href="https://github.com/d-raiff/Reflexsive/actions/workflows/ci.yml">
+  <a href="https://github.com/d-raiff/Reflexsive/actions/workflows/test_and_lint.yml">
     <img src="https://img.shields.io/github/license/d-raiff/Reflexsive.svg" alt="license"/>
   </a>
 </p>
