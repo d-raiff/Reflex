@@ -41,6 +41,14 @@ minversion = "7.0"
 addopts = "--strict-markers --tb=short --disable-warnings"
 testpaths = ["tests"]
 
+[tool.coverage.run]
+branch = true
+source = ["reflex"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+
 # -------------------------------
 # ✅ Mypy configuration
 # -------------------------------
