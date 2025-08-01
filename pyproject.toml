@@ -1,0 +1,22 @@
+[project]
+name = "reflex"
+version = "0.0.1"
+description = "Method aliasing system with argument remapping and optional stub generation"
+authors = [
+    { name = "Dylan Raiff" }
+]
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent"
+]
+
+[project.urls]
+Homepage = "https://github.com/d-raiff/Reflex"
+
+[tool.setuptools]
+packages = ["pyalias"]
+
+[tool.setuptools.package-data]
+# Include package data specified in MANIFEST.in, or default behavior
+"pyalias" = ["*"]
