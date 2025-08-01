@@ -1,11 +1,11 @@
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 import difflib
 
-from .errors import ReflexConfigurationError
+from .errors import ReflexsiveConfigurationError
 
 @dataclass
-class ReflexOptions:
+class ReflexsiveOptions:
     '''
     A class representing configuration options for the AliasedClass.
 
@@ -22,12 +22,12 @@ class ReflexOptions:
 
     def __init__(self, **kwargs: Any):
         for kwarg, value in kwargs.items():
-            if kwarg not in ReflexOptions.__dict__:
-                suggestion = difflib.get_close_matches(kwarg, ReflexOptions.__dict__, n=1)
+            if kwarg not in ReflexsiveOptions.__dict__:
+                suggestion = difflib.get_close_matches(kwarg, ReflexsiveOptions.__dict__, n=1)
                 suggestion_string = '' if not suggestion else f' Did you mean \'{suggestion[0]}\'?'
-                raise ReflexConfigurationError(f'Invalid Reflexsive option: \'{kwarg}\'.{suggestion_string}')
+                raise ReflexsiveConfigurationError(f'Invalid Reflexsive option: \'{kwarg}\'.{suggestion_string}')
             
             setattr(self, kwarg, value)
 
     def __contains__(self, item: Any) -> bool:
-        return item in ReflexOptions.__dict__
+        return item in ReflexsiveOptions.__dict__

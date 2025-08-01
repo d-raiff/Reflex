@@ -217,7 +217,7 @@ def stub_update_class(
             class_block += "    " + line.strip() + "\n"
         return full_stub_text + class_block
 
-def _write_stub_file(
+def stub_write_file(
         class_name: str,
         import_block: str,
         stub_lines: Iterable[str],

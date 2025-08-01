@@ -1,5 +1,5 @@
 [project]
-name = "reflex"
+name = "reflexsive"
 version = "0.0.1"
 description = "Method aliasing system with argument remapping and optional stub generation"
 authors = [
@@ -23,11 +23,11 @@ Repository = "https://github.com/d-raiff/Reflex"
 Issues = "https://github.com/d-raiff/Reflex/issues"
 
 [tool.setuptools]
-packages = ["reflex"]
+packages = ["reflexsive"]
 # Or: packages = { find = {} }
 
 [tool.setuptools.package-data]
-"reflex" = ["*"]
+"reflexsive" = ["*"]
 
 [build-system]
 requires = ["setuptools>=61.0"]
@@ -43,7 +43,7 @@ testpaths = ["tests"]
 
 [tool.coverage.run]
 branch = true
-source = ["reflex"]
+source = ["reflexsive"]
 
 [tool.coverage.report]
 show_missing = true

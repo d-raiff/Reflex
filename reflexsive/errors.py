@@ -1,15 +1,15 @@
-class ReflexError(Exception):
+class ReflexsiveError(Exception):
     """Base class for all alias-related errors."""
     pass
 
-class ReflexNameConflictError(ReflexError):
+class ReflexsiveNameConflictError(ReflexsiveError):
     """Raised when an alias name collides with an existing attribute or alias."""
     pass
 
-class ReflexArgumentError(ReflexError):
+class ReflexsiveArgumentError(ReflexsiveError):
     """Raised when the alias maps invalid or unsupported arguments."""
     pass
 
-class ReflexConfigurationError(ReflexError):
+class ReflexsiveConfigurationError(ReflexsiveError):
     """Raised when decorator configuration or options are invalid."""
     pass
