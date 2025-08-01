@@ -39,10 +39,10 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          pytest --cov=reflex --cov-config=pyproject.toml --cov-report=term --cov-report=xml
+          pytest --cov=reflexsive --cov-config=pyproject.toml --cov-report=term --cov-report=xml
 
       - name: Run mypy
-        run: mypy reflex
+        run: mypy reflexsive
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
