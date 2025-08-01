@@ -1,8 +1,11 @@
-from typing import Any, Callable, Dict, Optional, Tuple, Mapping, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Mapping, Type, TypeVar, Union, cast
 import inspect
 
 from .config import ReflexOptions
 from .errors import ReflexArgumentError, ReflexNameConflictError
+
+FuncType = Callable[..., Any]
+Decorated = Union[FuncType, staticmethod, classmethod]
     
 def create_alias_function(
         fn: Union[Callable[..., Any], staticmethod, classmethod],
@@ -163,7 +166,7 @@ class ReflexsiveMeta(type):
         AliasConfigurationError: If an invalid option is passed to the metaclass.
     '''
 
-    def __new__(cls, name: str, bases: Tuple, namespace: Dict[str, Any], **kwargs):
+    def __new__(cls, name: str, bases: Tuple, namespace: Dict[str, Any], **kwargs: Any) -> Type:
         options = ReflexOptions(**kwargs)
         alias_map: Dict[str, str] = {}
 
@@ -234,7 +237,7 @@ class Reflexsive(metaclass=ReflexsiveMeta):
         AliasConfigurationError: If an invalid option is passed to the metaclass.
     '''
     @staticmethod
-    def alias(_alias: str, **arg_map):
+    def alias(_alias: str, **arg_map: Any) -> Callable[[Decorated], Decorated]:
         '''
         Declare an alias for a method and optionally remap argument names.
 
@@ -267,13 +270,14 @@ class Reflexsive(metaclass=ReflexsiveMeta):
         ReflexNameConflictError:
             If the alias name is already registered for the same function.
         '''
-        def decorator(fn):
-            # Handle classmethod/staticmethod wrappers
-            is_staticmethod = isinstance(fn, staticmethod)
-            is_classmethod  = isinstance(fn, classmethod)
-
-            # Unwarp for introspection, we will return the actually function
-            real_fn = fn.__func__ if (is_staticmethod or is_classmethod) else fn
+        def decorator(fn: Decorated) -> Decorated:
+            # Unwrap method to get underlying function
+            if isinstance(fn, staticmethod):
+                real_fn = cast(Callable[..., Any], fn.__func__)
+            elif isinstance(fn, classmethod):
+                real_fn = cast(Callable[..., Any], fn.__func__)
+            else:
+                real_fn = cast(Callable[..., Any], fn)
             
             # We can check args and kwargs, but we have to check if the arg_map entry is declared vs kwargs
             # and reject/accept in the class decorator, as its determiend by a option
@@ -290,13 +294,14 @@ class Reflexsive(metaclass=ReflexsiveMeta):
                     f'Alias name \'{_alias}\' is already defined for function \'{real_fn.__name__}\'.'
                 )
 
-            real_fn._aliases = {**existing_aliases, _alias: arg_map}                                                        # type: ignore[attr-defined]
-            real_fn._source_filename = real_fn._source_filename if hasattr(real_fn, '_source_filename') else real_fn.__code__.co_filename  # type: ignore[attr-defined]
+            setattr(real_fn, "_aliases", {**existing_aliases, _alias: arg_map})
+            if not hasattr(real_fn, "_source_filename"):
+                setattr(real_fn, "_source_filename", real_fn.__code__.co_filename)
             
             # Re-wrap for correct method binding
-            if is_staticmethod:
+            if isinstance(fn, staticmethod):
                 return staticmethod(real_fn)
-            elif is_classmethod:
+            elif isinstance(fn, classmethod):
                 return classmethod(real_fn)
             else:
                 return real_fn

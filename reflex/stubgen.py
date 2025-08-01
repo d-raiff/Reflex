@@ -48,7 +48,7 @@ def stub_generate_signature(
         origin = getattr(tp, '__origin__', None)
         args = getattr(tp, '__args__', []) if origin else []
 
-        def add(t):
+        def add(t: Union[type, str]) -> None:
             if isinstance(t, str):
                 return  # ForwardRef not resolved
             mod = getattr(t, '__module__', None)

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Dict, Optional
 import difflib
 
 from .errors import ReflexConfigurationError
@@ -20,7 +20,7 @@ class ReflexOptions:
     docstring_alias_hints : bool = True
     alias_prefix          : Optional[str] = None
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any):
         for kwarg, value in kwargs.items():
             if kwarg not in ReflexOptions.__dict__:
                 suggestion = difflib.get_close_matches(kwarg, ReflexOptions.__dict__, n=1)
@@ -29,5 +29,5 @@ class ReflexOptions:
             
             setattr(self, kwarg, value)
 
-    def __contains__(self, item):
+    def __contains__(self, item: Any) -> bool:
         return item in ReflexOptions.__dict__
