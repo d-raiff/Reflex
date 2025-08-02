@@ -1,15 +1,95 @@
 from pathlib import Path
-import re
-from typing import Callable, Iterable, Optional, Mapping, Dict, Set, Union
+from typing import Callable, ForwardRef, Iterable, Optional, Mapping, Dict, Set, Union, Type
 import inspect
+import re
 import textwrap
+import typing
 
+_BUILTINS_TO_TYPING = {
+    getattr(typing, name).__origin__: name
+    for name in dir(typing)
+    if (
+        hasattr(getattr(typing, name), '__origin__') and
+        hasattr(getattr(typing, name).__origin__, '__module__') and
+        getattr(typing, name).__origin__.__module__ == 'builtins'
+    )
+}
+
+def stub_format_type(typ: Union[Type, str]) -> str:
+    if isinstance(typ, str):
+        return f"'{typ}'"
+    
+    if typ is type(None):
+        return 'None'
+    
+    if isinstance(typ, ForwardRef):
+        return f"'{typ.__forward_arg__}'"
+
+    origin = getattr(typ, '__origin__', None)
+    args = getattr(typ, '__args__', None)
+
+    if origin is Union:
+        # Optional case
+        if args and len(args) == 2 and type(None) in args:
+            inner = next(a for a in args if a is not type(None))
+            return f"Optional[{stub_format_type(inner)}]"
+        else:
+            return f"Union[{', '.join(stub_format_type(arg) for arg in args)}]"
+
+    elif origin:
+        base = _BUILTINS_TO_TYPING.get(origin, origin.__name__)
+        if args:
+            inner = ', '.join(stub_format_type(arg) for arg in args)
+            return f"{base}[{inner}]"
+        else:
+            return base
+
+    elif hasattr(typ, '__name__'):
+        return typ.__name__
+
+    return str(typ)
+
+def stub_format_param(
+        param: inspect.Parameter,
+        arg_map: Optional[Mapping[str, str]],
+        track_fn: Callable
+    ) -> str:
+    """Format a parameter for stub output, applying renames and type formatting."""
+    name = arg_map.get(param.name, param.name) if arg_map else param.name
+    annotated = False
+
+    # Format annotation
+    if param.annotation is not inspect.Parameter.empty:
+        annotated = True
+        annotation = stub_format_type(param.annotation)
+        track_fn(param.annotation)
+    else:
+        annotation = None
+
+    # Format default
+    default = param.default is not inspect.Parameter.empty
+
+    # Handle different kinds (POSITIONAL_OR_KEYWORD, VAR_POSITIONAL, VAR_KEYWORD)
+    prefix = ''
+    if param.kind == param.VAR_POSITIONAL:
+        prefix = '*'
+    elif param.kind == param.VAR_KEYWORD:
+        prefix = '**'
+
+    s = f"{prefix}{name}"
+    if annotated:
+        s += f": {annotation}"
+    if default:
+        s += " = ..."  # we don't want actual default values in stubs
+
+    return s
 
 def stub_generate_signature(
         fn: Callable, 
+        *,
+        collected_types: Dict[str, Set[str]],
         alias_name: Optional[str] = None, 
         arg_map: Optional[Mapping[str, str]] = None,
-        collected_types: Optional[Dict[str, Set[str]]] = None
     ) -> str:
     '''
     Generate a stub signature line for a function or its alias, for inclusion in a `.pyi` file.
@@ -40,21 +120,26 @@ def stub_generate_signature(
     doc = inspect.getdoc(fn) or ''
     alias_name = alias_name or fn.__name__
 
-    if collected_types is None:
-        collected_types = {}
-
-    def track_type(tp: type) -> None:
+    def track_type(typ: Type) -> None:
         # Handle wrapped types like Optional[int], List[User], etc.
-        origin = getattr(tp, '__origin__', None)
-        args = getattr(tp, '__args__', []) if origin else []
+        origin = getattr(typ, '__origin__', None)
+        args = getattr(typ, '__args__', []) if origin else []
 
-        def add(t: Union[type, str]) -> None:
+        def add(t: Union[Type, str]) -> None:
             if isinstance(t, str):
                 return  # ForwardRef not resolved
+            
             mod = getattr(t, '__module__', None)
             name = getattr(t, '__name__', None)
+            
+            # handle typing.Dict, typing.Set, etc
+            if origin in _BUILTINS_TO_TYPING:
+                collected_types.setdefault('typing', set()).add(_BUILTINS_TO_TYPING[origin])
+                return
+            
             if not mod or not name or mod == 'builtins':
                 return
+            
             collected_types.setdefault(mod, set()).add(name)
 
         # Special case for `Union`, as Optional is defined as Union with None
@@ -75,30 +160,25 @@ def stub_generate_signature(
                 for arg in args:
                     track_type(arg)
         else:
-            add(tp)
+            add(typ)
 
-    new_params = []
+    param_strs = []
     for param in sig.parameters.values():
         if param.name == 'self':
-            new_params.append(param)
+            param_strs.append('self')
             continue
-        new_name = arg_map.get(param.name, param.name) if arg_map else param.name
-        if param.annotation is not inspect.Parameter.empty:
-            track_type(param.annotation)
-        new_params.append(param.replace(name=new_name))
+        param_strs.append(stub_format_param(param, arg_map, track_type))
 
-    new_sig = sig.replace(parameters=new_params)
-    params_str = ', '.join(str(p) for p in new_sig.parameters.values())
+    params_str = ', '.join(param_strs)
     
-    return_annotation = new_sig.return_annotation
+    return_annotation = sig.return_annotation
     if return_annotation is inspect.Signature.empty:
-        return_type = 'Any'
-        collected_types.setdefault('typing', set()).add('Any')
+        return_type = 'None'
     elif isinstance(return_annotation, type):
         return_type = return_annotation.__name__
         track_type(return_annotation)
     else:
-        return_type = str(return_annotation)
+        return_type = stub_format_type(return_annotation)
         track_type(return_annotation)
 
     if not doc:
