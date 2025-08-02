@@ -296,3 +296,62 @@ def test_alias_rejects_non_explicit_parameter_should_fail():
             @Reflexsive.alias('bad_alias', x='a')  # 'x' is not explicitly defined
             def run(self, **kwargs):
                 return kwargs.get('x')
+            
+def test_class_with_other_attributes():
+    '''
+    Verifies that `Reflexsive` handles non-callable attributes of a class properly.
+    This captures class variables, as shown below.
+    '''
+    class AliasTest23(Reflexsive):
+        x: int = 42
+        
+        @Reflexsive.alias('a1', user='u')
+        def login(self, user):
+            return f'user:{user}'
+
+    obj = AliasTest23()
+
+    assert obj.login('carol') == 'user:carol'
+    assert obj.a1(u='dave') == 'user:dave'
+    
+def test_alias_conflicts_with_existing_attribute_function_should_fail():
+    '''
+    Verifies that `Reflexsive` raises a `ReflexsiveNameConflictError` when an alias is declared
+    but that name already exists in the class namespace as a function.
+    '''
+    with pytest.raises(ReflexsiveNameConflictError, match=f'Alias \'register\' conflicts with an existing attribute on class \'AliasTest24\''):
+        class AliasTest24(Reflexsive):
+            def register(self):
+                pass
+            
+            @Reflexsive.alias('register', user='u')
+            def login(self, user):
+                return f'user:{user}'
+
+def test_alias_conflicts_with_existing_attribute_variable_should_fail():
+    '''
+    Verifies that `Reflexsive` raises a `ReflexsiveNameConflictError` when an alias is declared
+    but that name already exists in the class namespace as a function.
+    '''
+    with pytest.raises(ReflexsiveNameConflictError, match=f'Alias \'x\' conflicts with an existing attribute on class \'AliasTest25\''):
+        class AliasTest25(Reflexsive):
+            x: int = 42
+            
+            @Reflexsive.alias('x', user='u')
+            def login(self, user):
+                return f'user:{user}'
+
+def test_var_keyword_parameter_usage():
+    '''
+    Ensures that `**kwargs` from the original function are passed correctly
+    through an alias when extra keys are included.
+    '''
+    class AliasTest26(Reflexsive):
+        @Reflexsive.alias('doit', x='a')
+        def process(self, x, **kwargs):
+            return {'x': x, **kwargs}
+
+    obj = AliasTest26()
+    
+    result = obj.doit(a=10, b=20, c=30)  # type: ignore
+    assert result == {'x': 10, 'b': 20, 'c': 30}
