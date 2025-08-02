@@ -33,8 +33,10 @@ def stub_format_type(typ: Union[Type, str]) -> str:
         if args and len(args) == 2 and type(None) in args:
             inner = next(a for a in args if a is not type(None))
             return f"Optional[{stub_format_type(inner)}]"
-        else:
+        elif args:
             return f"Union[{', '.join(stub_format_type(arg) for arg in args)}]"
+        else:
+            return "Union"
 
     elif origin:
         base = _BUILTINS_TO_TYPING.get(origin, origin.__name__)
