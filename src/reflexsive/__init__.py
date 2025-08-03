@@ -12,6 +12,14 @@ from .errors import (
     ReflexsiveNameConflictError,
 )
 
+__name__ = 'reflexsive'
+
+__version__ = 'v0.0.0.post0'
+__version_tuple__ = ('v', 0, 0, 'post0')
+
+__version_short__ = '.'.join(__version__.split('.')[:-1])
+__version_tuple_short__ = __version_tuple__[:-1]
+
 __all__ = [
     # Public core API
     "Reflexsive",
