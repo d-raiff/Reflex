@@ -56,10 +56,7 @@ jobs:
         if: matrix.python-version == '3.12'
         uses: codecov/codecov-action@v4
         with:
-          slug: d-raiff/Reflexsive
           token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: true
-          verbose: true
 
   publish:
     name: Build and publish to PyPI
