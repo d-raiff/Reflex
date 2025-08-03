@@ -48,13 +48,7 @@ jobs:
           else
             poetry run pytest
           fi
-
-      - name: 🔍 Dump full coverage.xml
-        if: matrix.python-version == '3.12'
-        run: |
-          echo "=== full coverage.xml ==="
-          cat coverage.xml
-
+          
       - name: 🔍 Run type checks with mypy
         run: poetry run mypy src/reflexsive
         
@@ -62,12 +56,8 @@ jobs:
         if: matrix.python-version == '3.12'
         uses: codecov/codecov-action@v4
         with:
-          files: ./coverage.xml
           slug: d-raiff/Reflexsive
           token: ${{ secrets.CODECOV_TOKEN }}
-          commit: ${{ github.sha }}
-          name: reflexsive-py312
-          flags: unittests
           fail_ci_if_error: true
           verbose: true
 
