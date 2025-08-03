@@ -44,10 +44,17 @@ jobs:
       - name: 🧪 Run tests - coverage only on 3.12
         run: |
           if [ "${{ matrix.python-version }}" == "3.12" ]; then
-            poetry run pytest --cov=src/reflexsive --cov-config=pyproject.toml --cov-report=term --cov-report=xml
+            poetry run pytest --cov=reflexsive --cov-config=pyproject.toml --cov-report=term --cov-report=xml
           else
             poetry run pytest
           fi
+
+      - name: 🔍 Dump full coverage.xml
+        if: matrix.python-version == '3.12'
+        run: |
+          ls -lh
+          echo "=== full coverage.xml ==="
+          cat coverage.xml
           
       - name: 🔍 Run type checks with mypy
         run: poetry run mypy src/reflexsive
