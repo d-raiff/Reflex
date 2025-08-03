@@ -66,6 +66,8 @@ jobs:
           slug: d-raiff/Reflexsive
           token: ${{ secrets.CODECOV_TOKEN }}
           commit: ${{ github.sha }}
+          name: reflexsive-py312
+          flags: unittests
           fail_ci_if_error: true
           verbose: true
 
