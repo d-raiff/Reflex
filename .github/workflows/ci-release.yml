@@ -45,6 +45,11 @@ jobs:
         run: |
           poetry run pytest --cov=reflexsive --cov-config=pyproject.toml --cov-report=term --cov-report=xml
 
+      - name: 🔍 Dump full coverage.xml
+        run: |
+          echo "=== full coverage.xml ==="
+          cat coverage.xml
+
       - name: 🔍 Run type checks with mypy
         run: poetry run mypy src/reflexsive
         
