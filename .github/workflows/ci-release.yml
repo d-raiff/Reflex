@@ -62,9 +62,10 @@ jobs:
         if: matrix.python-version == '3.12'
         uses: codecov/codecov-action@v4
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          slug: d-raiff/Reflexsive
           files: ./coverage.xml
+          slug: d-raiff/Reflexsive
+          token: ${{ secrets.CODECOV_TOKEN }}
+          commit: ${{ github.sha }}
           fail_ci_if_error: true
           verbose: true
 
