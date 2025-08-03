@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 from collections import deque
-from contextlib import contextmanager
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, ParamSpec, Set, Tuple, TypeVar, Union
+from types import EllipsisType
+from typing import Any, Callable, Dict, Iterable, List, Optional, ParamSpec, Set, Tuple, Type, TypeVar, Union, cast
 import ast
 import click
 import functools
@@ -21,6 +21,7 @@ from .errors import (
 
 T = TypeVar('T')
 P = ParamSpec('P')
+ConstantValue = str | bytes | bool | int | float | complex | EllipsisType | None
 
 VALID_REFLEXSIVE_CLASS_NAME = 'Reflexsive'
 VALID_REFLEXSIVE_MODULE_PATHS = [
@@ -35,7 +36,7 @@ VALID_REFLEXSIVEMETA_MODULE_PATHS = [
 
 def timed(fn: Callable[P, T]) -> Callable[P, Tuple[float, T]]:
     @functools.wraps(fn)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> Tuple[float, T]:
         start = time.perf_counter()
         result = fn(*args, **kwargs)
         end = time.perf_counter()
@@ -98,8 +99,8 @@ class Info(ABC):
 @dataclass(frozen=True)
 class AliasInfo(Info):
     qual_name   : str
-    alias_name  : Optional[str]
-    arg_mapping : Optional[Dict[str, str]]
+    alias_name  : Optional[ConstantValue]            # These can be any constant - we do not raise any errors during AST parsing
+    arg_mapping : Optional[Dict[str, ConstantValue]] # These can be any constant - we do not raise any errors during AST parsing
     has_paren   : bool
     path        : Path
     row         : int
@@ -181,7 +182,7 @@ class FunctionInfo(Info):
         if not isinstance(other, FunctionInfo):
             return NotImplemented
         return (
-            self.qual_name == other.qual_name,
+            self.qual_name == other.qual_name and
             self.path.resolve() == other.path.resolve() and
             self.row == other.row and
             self.column == other.column and
@@ -328,7 +329,7 @@ class ClassInfo(Info):
         if not isinstance(other, ClassInfo):
             return NotImplemented
         return (
-            self.qual_name == other.qual_name,
+            self.qual_name == other.qual_name and
             self.path.resolve() == other.path.resolve() and
             self.row == other.row and
             self.column == other.column and
@@ -355,9 +356,9 @@ class WarningLevel(Enum):
 
 @dataclass(frozen=True)
 class Warning:
-    info_objs   : Tuple[Info]
+    info_objs   : Tuple[Info, ...]
     level       : WarningLevel
-    exec_typ    : Optional[Exception]
+    exec_typ    : Optional[Type[Exception]]
     _message    : str
     
     @property
@@ -389,7 +390,7 @@ class Warning:
             
         return f'{level_str} {raises_str}{message_str}'
 
-def validate_path_input(path: Path) -> None:
+def validate_path_input(path: Path) -> bool:
     if not path.exists():
         click.echo('{}: Provided scan path does not exist: {}'.format(
             click.style('[Error]', bold=True, fg='red'), str(path)
@@ -408,7 +409,7 @@ def resolve_name(expr: ast.expr) -> Optional[str]:
     if isinstance(expr, ast.Name):
         return expr.id
     elif isinstance(expr, ast.Attribute):
-        parts = []
+        parts: list[str] = []
         while isinstance(expr, ast.Attribute):
             parts.insert(0, expr.attr)
             expr = expr.value
@@ -454,7 +455,7 @@ def get_decorator_qual_name(expr: ast.expr, imports: dict[str, str]) -> str:
         return imports.get(expr.id, expr.id)
 
     elif isinstance(expr, ast.Attribute):
-        parts = []
+        parts: list[str] = []
         while isinstance(expr, ast.Attribute):
             parts.insert(0, expr.attr)
             expr = expr.value
@@ -484,9 +485,9 @@ def split_qual_name(qual_name: str) -> tuple[str, str]:
     else:
         return '', parts[0]
 
-def get_func_arg_names(func_node: ast.FunctionDef) -> list[str]:
+def get_func_arg_names(func_node: Union[ast.FunctionDef, ast.AsyncFunctionDef]) -> list[str]:
     args = func_node.args
-    param_names = []
+    param_names: list[str] = []
 
     # Positional and keyword arguments
     param_names.extend(arg.arg for arg in args.args)
@@ -572,7 +573,10 @@ def collect_classes(root: Path) -> Set[ClassInfo]:
                     if kw.arg != 'metaclass':
                         continue
                     
-                    metaclass = resolve_name(kw.value)
+                    resolved = resolve_name(kw.value)
+                    if resolved:
+                        metaclass = resolved
+                        
                     if metaclass and metaclass in imports:
                         metaclass = imports[metaclass]
                             
@@ -583,7 +587,7 @@ def collect_classes(root: Path) -> Set[ClassInfo]:
                     func_qual_name = f'{module_name}.{node.name}.{func.name}'
                     func_decl_line = source_lines[func.lineno - 1] if 0 < func.lineno <= len(source_lines) else ''
                     func_full_impl = '\n'.join(source_lines[func.lineno:func.end_lineno])
-                    func_parameters = get_func_arg_names(func)
+                    func_parameters = set(get_func_arg_names(func))
                     aliases: List[AliasInfo] = []
                     
                     for deco in func.decorator_list:                        
@@ -601,17 +605,18 @@ def collect_classes(root: Path) -> Set[ClassInfo]:
                             kwargs = {kw.arg: kw.value for kw in deco.keywords if kw.arg is not None}
                             
                             # TODO: Handle this better for non constants and in general
-                            for arg in (args + list(kwargs.values())):
-                                if not isinstance(arg, ast.Constant):
-                                    raise NotImplementedError
-                            args = [arg.value for arg in args]
+                            args_validated: List[ast.Constant] = [arg for arg in args if isinstance(arg, ast.Constant)]
+                            kwargs_validated: Dict[str, ast.Constant] = {k: v for k, v in kwargs.items() if isinstance(v, ast.Constant)}
                             
                             # No alias name defined
-                            if args:
-                                alias_name = args[0]
+                            if args_validated:
+                                alias_name = args_validated[0].value
                             else:
                                 alias_name = None
-                            args_mapping = {k: v.value for k, v in kwargs.items()}
+                                
+                            args_mapping = {k: v.value for k, v in kwargs_validated.items()}
+                            
+                            # END TODO ^^
                             
                         else:
                             alias_name = None
@@ -771,7 +776,7 @@ def strip_ansi(text: str) -> str:
     return ansi_escape.sub('', text)
 
 def render_output(
-        classes : list[ClassInfo], 
+        classes : Iterable[ClassInfo], 
         *,
         output  : Optional[Path], 
         mode    : str,
@@ -851,11 +856,11 @@ def render_statistic(
     writeln(content, output=output)
 
 @click.group()
-def cli():
+def cli() -> None:
     pass
 
 @click.group()
-def scan():
+def scan() -> None:
     '''
     Scan the codebase for Reflexsive classes and aliases for viewing or validation.
     '''
@@ -913,7 +918,7 @@ def view(
         return
     
     @timed
-    def run():
+    def run() -> Set[ClassInfo]:
         return get_class_set_in_path(
             path, 
             mode=mode,
@@ -926,7 +931,7 @@ def view(
     if output and not output.suffix:
         output = output.with_suffix(f'.{format}')
         
-    if output.exists() and output.is_file():
+    if output and output.exists() and output.is_file():
         output.unlink()
     
     render_output(results, output=output, mode=mode, format=format)
@@ -953,21 +958,24 @@ def get_validation_warnings(
     )
     
     def add_warning(
-            cls: Union[ClassInfo, Tuple[ClassInfo]], 
+            info_objs: Union[Info, Tuple[Info, ...]], 
             level: WarningLevel, 
-            exec_typ: Exception,
+            exec_typ: Optional[Type[Exception]],
             message: str
         ) -> bool:
         if int(level.value) < int(minimum_warning_level.value):
-            return
+            return False
             
-        if not isinstance(cls, Tuple):
-            cls = (cls, )    
+        info_objs_tuple: Tuple[Info, ...]
+        if not isinstance(info_objs, tuple):
+            info_objs_tuple = cast(Tuple[Info, ...], (info_objs_tuple, ))
+        else:
+            info_objs_tuple = cast(Tuple[Info, ...], info_objs_tuple)
         
         if strict and level != WarningLevel.INFO:
             level = WarningLevel.ERROR
             
-        warnings.append(Warning(cls, level, exec_typ, message))
+        warnings.append(Warning(info_objs_tuple, level, exec_typ, message))
         return level == WarningLevel.ERROR and exit
     
     for cls in sorted(classes, key=lambda cls: (cls.path, cls.qual_name)):
@@ -986,6 +994,10 @@ def get_validation_warnings(
                     f'$(2::colored_location): Function \'$(1::colored_name).$(2::colored_name)\' has an alias decorator that is not called.'):
                     return warnings 
                 
+                if not isinstance(alias.alias_name, str) and add_warning((cls, func, alias), WarningLevel.ERROR, ReflexsiveNameConflictError,
+                    f'$(3::colored_location): Alias \'$(3::colored_name)\' of \'$(1::colored_name).$(2::colored_name)\' must have a str name, not \'{type(alias.alias_name).__name__}\'.'):
+                    return warnings
+                
                 if alias.alias_name in seen_alias_names and add_warning((cls, func), WarningLevel.ERROR, ReflexsiveNameConflictError,
                     f'$(2::colored_location): Function \'$(1::colored_name).$(2::colored_name)\' has duplicate alias name \'{alias.colored_name}\'.'):
                     return warnings
@@ -993,21 +1005,27 @@ def get_validation_warnings(
                 if alias.arg_mapping:
                     assert alias.has_paren, 'Should always be true.'
                     for param, remapping in alias.arg_mapping.items():
-                        if remapping in ('args', 'kwargs', 'self', 'cls') and add_warning((alias), WarningLevel.ERROR, ReflexsiveArgumentError,
-                            f'$(colored_location): Alias \'$(colored_name)\' cannot use reserved name \'{remapping}\'.'):
-                            return warnings 
+                        if not isinstance(remapping, str):
+                            if add_warning((alias), WarningLevel.ERROR, TypeError, f'$(colored_location): Must provide \'$(colored_name)\' '
+                                           f'a string remapping value, not \'{type(remapping).__name__}\'.'):
+                                return warnings
                             
-                        if param not in func.parameters and add_warning((cls, func), WarningLevel.ERROR, ReflexsiveArgumentError,
-                            f'$(2::colored_location): Alias \'$(2::colored_name)\' remaps non-existent parameter \'{param}\' in function \'$(1::colored_name)\'.'):
-                            return warnings
+                        else:
+                            if remapping in ('args', 'kwargs', 'self', 'cls') and add_warning((alias), WarningLevel.ERROR, ReflexsiveArgumentError, 
+                                f'$(colored_location): Alias \'$(colored_name)\' cannot use reserved name \'{remapping}\'.'):
+                                return warnings 
+                            
+                            if param not in func.parameters and add_warning((cls, func), WarningLevel.ERROR, ReflexsiveArgumentError,
+                                f'$(2::colored_location): Alias \'$(2::colored_name)\' remaps non-existent parameter \'{param}\' in function \'$(1::colored_name)\'.'):
+                                return warnings
                 
                 if alias.alias_name:
                     alias_map.setdefault(alias, []).append(f'{cls.colored_name}.{func.colored_name}')
                     seen_alias_names.add(alias.alias_name)
                     
                     
-        for alias, funcs in alias_map.items():
-            funcs = set(funcs)
+        for alias, funcs_list in alias_map.items():
+            funcs = set(funcs_list)
             if len(funcs) == 1:
                 continue
             
@@ -1076,12 +1094,12 @@ def validate(
 @click.option('--output', '-o', default='stubs/', help='Directory to output stub files')
 @click.option('--only-aliases', is_flag=True, help='Only include alias stubs')
 @click.option('--force', is_flag=True, help='Overwrite existing stub files')
-def generate_stubs_cmd(target: str, output: str, only_aliases: bool, force: bool):
+def generate_stubs_cmd(target: str, output: str, only_aliases: bool, force: bool) -> None:
     '''Generate .pyi stubs for aliases.'''
     click.echo(f'[NYI] Would generate stubs for {target} -> {output}, only_aliases={only_aliases}, force={force}')
 
 @cli.command()
-def version():
+def version() -> None:
     '''Show Reflexsive version.'''
     from reflexsive import __name__, __version_short__, __version__
     click.echo('{} {} ({})'.format(
