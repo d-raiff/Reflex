@@ -43,7 +43,7 @@ jobs:
 
       - name: ✅ Run tests with coverage
         run: |
-          poetry run pytest --cov=reflexsive --cov-config=pyproject.toml --cov-report=term --cov-report=xml
+          poetry run pytest --cov=src/reflexsive --cov-config=pyproject.toml --cov-report=term --cov-report=xml
 
       - name: 🔍 Dump full coverage.xml
         run: |
