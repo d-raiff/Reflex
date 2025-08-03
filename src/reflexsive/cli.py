@@ -1029,8 +1029,9 @@ def get_validation_warnings(
             if len(funcs) == 1:
                 continue
             
+            funcs_str = ', '.join(funcs)
             if len(funcs) > 1 and add_warning((cls, alias), WarningLevel.ERROR, ReflexsiveNameConflictError,
-                f'$(1::colored_location): Alias name $(2::colored_name) is used by multiple functions in $(1::colored_name): {', '.join(funcs)}.'):
+                f'$(1::colored_location): Alias name $(2::colored_name) is used by multiple functions in $(1::colored_name): {funcs_str}.'):
                 return warnings
             
     return sorted(warnings, key=lambda w: int(w.level.value), reverse=True)
