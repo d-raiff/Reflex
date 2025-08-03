@@ -385,7 +385,7 @@ class Warning:
             return str(getattr(self.info_objs[index], field))
         
         level_str = str(self.level)
-        raises_str = f'raises {click.style(self.exec_typ.__name__, fg='red')}: ' if self.exec_typ else ''
+        raises_str = 'raises {}: '.format(click.style(self.exec_typ.__name__, fg='red')) if self.exec_typ else ''
         message_str = re.sub(r'\$\((.*?)\)', replacer, self._message) # Dynamic fields from self.info_objs
             
         return f'{level_str} {raises_str}{message_str}'
