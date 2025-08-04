@@ -968,9 +968,9 @@ def get_validation_warnings(
             
         info_objs_tuple: Tuple[Info, ...]
         if not isinstance(info_objs, tuple):
-            info_objs_tuple = cast(Tuple[Info, ...], (info_objs_tuple, ))
+            info_objs_tuple = cast(Tuple[Info, ...], (info_objs, ))
         else:
-            info_objs_tuple = cast(Tuple[Info, ...], info_objs_tuple)
+            info_objs_tuple = cast(Tuple[Info, ...], info_objs)
         
         if strict and level != WarningLevel.INFO:
             level = WarningLevel.ERROR
