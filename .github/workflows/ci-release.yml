@@ -44,7 +44,7 @@ jobs:
       - name: 🧪 Run tests
         run: |
           if [ "${{ matrix.python-version }}" = "3.12" ]; then
-            poetry run pytest --cov=your_package --cov-report=xml
+            poetry run pytest --cov=your_package --cov-config=pyproject.toml --cov-report=xml
             poetry run genbadge coverage -i coverage.xml -o coverage.svg
           else
             poetry run pytest
