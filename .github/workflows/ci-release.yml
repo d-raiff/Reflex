@@ -41,15 +41,20 @@ jobs:
         run: |
           poetry install --no-interaction
 
-      - name: 🧪 Run tests - coverage only on 3.12
+      - name: 🧪 Run tests
         run: |
-          poetry run pytest --cov=reflexsive --cov-config=pyproject.toml --cov-report=term --cov-report=xml
-          poetry run genbadge coverage -i coverage.xml -o coverage.svg
+          if [ "${{ matrix.python-version }}" = "3.12" ]; then
+            poetry run pytest --cov=your_package --cov-report=xml
+            poetry run genbadge coverage -i coverage.xml -o coverage.svg
+          else
+            poetry run pytest
+          fi
           
       - name: 🔍 Run type checks with mypy
         run: poetry run mypy src/reflexsive
 
       - name: 🚀 Push badge to `badges` branch
+        if: matrix.python-version == '3.12'
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"

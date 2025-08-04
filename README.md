@@ -4,8 +4,8 @@
   <a href="https://github.com/d-raiff/Reflexsive/actions/workflows/ci-release.yml">
     <img src="https://github.com/d-raiff/Reflexsive/actions/workflows/ci-release.yml/badge.svg" alt="ci-release"/>
   </a>
-  <a href="https://github.com/d-raiff/Reflexsive/actions/workflows/ci-release.yml">
-    <img src="https://codecov.io/gh/d-raiff/Reflex/branch/main/graph/badge.svg" alt="codedev"/>
+  <a href="https://github.com/d-raiff/Reflexsive/tree/badges">
+    <img src="https://raw.githubusercontent.com/d-raiff/Reflexsive/badges/coverage.svg" alt="coverage"/>
   </a>
   <a href="https://github.com/d-raiff/Reflexsive/actions/workflows/ci-release.yml">
     <img src="https://img.shields.io/github/license/d-raiff/Reflexsive.svg" alt="license"/>
