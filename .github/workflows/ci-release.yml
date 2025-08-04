@@ -55,7 +55,7 @@ jobs:
           git config --global user.email "github-actions@github.com"
 
           # Clone badges branch separately
-          git clone --depth=1 --branch=badges https://github.com/${{ github.repository }} badge-repo
+          git clone --depth=1 --branch=badges https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} badge-repo
           mv coverage.svg badge-repo/coverage.svg
 
           cd badge-repo
