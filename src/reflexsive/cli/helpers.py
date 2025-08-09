@@ -1,341 +1,46 @@
-from abc import ABC, abstractmethod
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
 from types import EllipsisType
-from typing import Any, Callable, Dict, Iterable, List, Optional, ParamSpec, Set, Tuple, Type, TypeVar, Union, cast
+from typing import (
+    Dict, List, Set, Tuple, 
+    Any, Callable, Iterable, 
+    Optional, Type, Union, 
+    TypeVar, cast
+)
 import ast
 import click
 import functools
 import json
 import re
-import textwrap
 import time
 import yaml
 
-from .errors import (
+try:
+    # Python 3.10 and anove
+    from typing import ParamSpec
+except ImportError:
+    # Python 3.9 and below
+    from typing_extensions import ParamSpec
+
+from ..errors import (
     ReflexsiveNameConflictError,
     ReflexsiveArgumentError
 )
+from .info import (
+    Info,
+    AliasInfo, FunctionInfo, ClassInfo
+)
+from .statics import (
+    VALID_REFLEXSIVE_MODULE_PATHS,
+    VALID_REFLEXSIVEMETA_MODULE_PATHS,
+)
+from ._split_qual_name import split_qual_name
 
 T = TypeVar('T')
 P = ParamSpec('P')
 ConstantValue = str | bytes | bool | int | float | complex | EllipsisType | None
-
-VALID_REFLEXSIVE_CLASS_NAME = 'Reflexsive'
-VALID_REFLEXSIVE_MODULE_PATHS = [
-    f'reflexsive.{VALID_REFLEXSIVE_CLASS_NAME}',
-    f'reflexsive.core.{VALID_REFLEXSIVE_CLASS_NAME}',
-]
-
-VALID_REFLEXSIVEMETA_CLASS_NAME = 'ReflexsiveMeta'
-VALID_REFLEXSIVEMETA_MODULE_PATHS = [
-    f'reflexsive.core.{VALID_REFLEXSIVEMETA_CLASS_NAME}',
-]
-
-def timed(fn: Callable[P, T]) -> Callable[P, Tuple[float, T]]:
-    @functools.wraps(fn)
-    def wrapper(*args: Any, **kwargs: Any) -> Tuple[float, T]:
-        start = time.perf_counter()
-        result = fn(*args, **kwargs)
-        end = time.perf_counter()
-        elapsed = end - start
-        return elapsed, result
-    return wrapper
-
-def writeln(content: str, *, output: Optional[Path]) -> None:
-    if output:
-        content = f'{strip_ansi(content)}\n'
-        output.parent.mkdir(parents=True, exist_ok=True
-                            )
-        if not output.exists():
-            output.write_text(content, encoding='utf-8')
-        else:
-            with open(output, 'a') as file:
-                file.write(content)
-            
-    else:
-        click.echo(content)
-        
-def format_elapsed(elapsed: float) -> str:
-    if elapsed < 60:
-        # Show seconds with 4 significant figures
-        return f'{elapsed:.4g}s'
-    elif elapsed < 3600:
-        minutes = int(elapsed // 60)
-        seconds = elapsed % 60
-        return f'{minutes}m {seconds:.4g}s'
-    else:
-        hours = int(elapsed // 3600)
-        minutes = int((elapsed % 3600) // 60)
-        seconds = elapsed % 60
-        return f'{hours}h {minutes}m {seconds:.4g}s'
-
-class Info(ABC):
-    qual_name   : str
-    path        : Path
-    row         : int
-    column      : int
-    
-    @property
-    def name(self) -> str:
-        return split_qual_name(self.qual_name)[1]
-    
-    @property
-    @abstractmethod
-    def colored_name(self) -> str:
-        pass
-    
-    @property
-    def location(self) -> str:
-        column_str = f':{self.column}' if self.column else ''
-        return f'{self.path}:{self.row}{column_str}'
-    
-    @property
-    def colored_location(self) -> str:
-        return click.style(self.location, fg='black', underline=True)
-
-@dataclass(frozen=True)
-class AliasInfo(Info):
-    qual_name   : str
-    alias_name  : Optional[ConstantValue]            # These can be any constant - we do not raise any errors during AST parsing
-    arg_mapping : Optional[Dict[str, ConstantValue]] # These can be any constant - we do not raise any errors during AST parsing
-    has_paren   : bool
-    path        : Path
-    row         : int
-    column      : int
-    decl_line   : str
-    
-    @property
-    def colored_name(self) -> str:
-        return click.style(self.alias_name, fg='red', bold=True)
-    
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            'qual-name': self.qual_name,
-            'alias-name': self.alias_name,
-            'arg-mapping': self.arg_mapping,
-            'has-paren': self.has_paren,
-            'path': str(self.path),
-            'line': self.row,
-            'column': self.column,
-            'declaration': self.decl_line,
-        }
-    
-    def __hash__(self) -> int:
-        # We want the same declared alias in different places to match, leave out path, row, column, and declaration, also
-        # arg_mapping to match across different sets of args
-        return hash((
-            self.qual_name,
-            self.alias_name,
-            self.has_paren,
-        ))
-        
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, AliasInfo):
-            return NotImplemented
-        return (
-            self.qual_name == other.qual_name and
-            self.alias_name == other.alias_name and
-            self.has_paren == other.has_paren
-        )
-
-@dataclass(frozen=True)
-class FunctionInfo(Info):
-    qual_name   : str
-    path        : Path
-    row         : int
-    column      : int
-    parameters  : Set[str]
-    aliases     : List[AliasInfo]
-    decl_line   : str
-    full_impl   : str
-    
-    @property
-    def colored_name(self) -> str:
-        return click.style(self.name, fg='blue', bold=True)
-    
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            'name': self.qual_name,
-            'path': str(self.path),
-            'line': self.row,
-            'column': self.column,
-            'parameters': self.parameters,
-            'aliases': list(alias.to_dict() for alias in self.aliases),
-            'implementaion': f'{self.decl_line}\n{self.full_impl}',
-        }
-    
-    def __hash__(self) -> int:
-        return hash((
-            self.qual_name,
-            self.path.resolve(),
-            self.row,
-            self.column,
-            frozenset(sorted(self.parameters)),
-            self.decl_line.strip(),
-            self.full_impl.strip(),
-        ))
-        
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, FunctionInfo):
-            return NotImplemented
-        return (
-            self.qual_name == other.qual_name and
-            self.path.resolve() == other.path.resolve() and
-            self.row == other.row and
-            self.column == other.column and
-            self.parameters == other.parameters and
-            self.decl_line == other.decl_line and
-            self.full_impl == other.full_impl
-        )
-
-@dataclass(frozen=True)
-class ClassInfo(Info):
-    qual_name   : str
-    path        : Path
-    row         : int
-    column      : int
-    metaclass   : str
-    bases       : Set[str]
-    functions   : Set[FunctionInfo]
-    decl_line   : str
-    full_impl   : str
-    
-    # Workaround for frozen=True, list of 1 element
-    _is_valid_reflexsive: List[bool] = field(default_factory=lambda: [False]) # Set by `prune_aliasless_classes`
-
-    @property
-    def colored_name(self) -> str:
-        return click.style(self.name, fg='cyan', bold=True)
-    
-    @property
-    def is_valid_reflexsive(self) -> bool:
-        assert len(self._is_valid_reflexsive) == 1, 'Stop messing with my implementaion!'
-        return self._is_valid_reflexsive[0]
-    
-    def set_is_valid_reflexsive(self, value: bool) -> None:
-        assert len(self._is_valid_reflexsive) == 1, 'Stop messing with my implementaion!'
-        self._is_valid_reflexsive[0] = value
-    
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            'name': self.qual_name,
-            'path': str(self.path),
-            'line': self.row,
-            'column': self.column,
-            'metaclass': self.metaclass,
-            'bases': list(self.bases),
-            'functions': list(func.to_dict() for func in self.functions),
-            'implementaion': f'{self.decl_line}\n{self.full_impl}',
-        }
-        
-    def render(self, mode: str) -> str:
-        def highlight_bases(declaration: str) -> str:
-            match = re.match(r'(class\s+\w+\s*\((.*?)\))', declaration)
-            if not match:
-                return declaration
-            
-            def color_base(base: str) -> str:
-                base_like_reflexsive = (
-                    base == VALID_REFLEXSIVE_CLASS_NAME or
-                    base in VALID_REFLEXSIVE_MODULE_PATHS
-                )
-                base_like_reflexsive_meta = (
-                    (metaclass := base.removeprefix('metaclass=')) == VALID_REFLEXSIVEMETA_CLASS_NAME or
-                     metaclass in VALID_REFLEXSIVEMETA_MODULE_PATHS
-                )
-                                
-                if base_like_reflexsive or base_like_reflexsive_meta:
-                    if metaclass != base:
-                        return '{}={}'.format(click.style('metaclass', fg='bright_yellow', italic=True), 
-                                              click.style(metaclass, fg='green'))
-                    else:
-                        return click.style(base, fg='green')
-                
-                return click.style(base, fg='yellow')
-
-            base_group = match.group(2)
-            bases = [b.strip() for b in base_group.split(',') if b.strip()]
-            colored_bases = [color_base(b) for b in bases]
-            
-            start, end = match.span(2)
-            highlighted_decl = (
-                declaration[:start] +
-                ', '.join(colored_bases) +
-                declaration[end:]
-            )
-            return highlighted_decl
-        
-        column_str = f':{self.column}' if self.column else ''
-        path_str = click.style(f'{self.path}:{self.row}{column_str}', fg='black', underline=True)
-        
-        lines = []
-
-        if mode in ('classes', 'both') and self.is_valid_reflexsive:
-            lines.append(f'{path_str}: {self.colored_name}')
-            lines.append(textwrap.indent(highlight_bases(self.decl_line.strip()), ' ' * 4))
-
-        if mode in ('functions', 'both') and self.functions:
-            for func in sorted(self.functions, key=lambda f: (f.row, f.qual_name)):
-                func_col_str = f':{func.column}' if func.column else ''
-                func_path_str = click.style(f'{func.path}:{func.row}{func_col_str}', fg='black', underline=True)
-                lines.append(f'{func_path_str}: {func.colored_name}')
-                
-                aliases = sorted(func.aliases, key=lambda a: a.row)
-                for i, alias in enumerate(aliases):        
-                    alias_qual_name = click.style(f'@{alias.qual_name}', fg='magenta', bold=True)
-                    alias_params = ''
-                    
-                    if alias.alias_name:
-                        alias_params = '\'{}\''.format(click.style(alias.alias_name, fg='yellow'))
-                    
-                    if alias.arg_mapping:
-                        alias_params_no_name = ', '.join('\'{}\'=\'{}\''.format(
-                                click.style(param, fg='yellow'), 
-                                click.style(param_alias, fg='yellow')
-                            ) for param, param_alias in alias.arg_mapping.items())
-                        alias_params = ', '.join(s for s in [alias_params, alias_params_no_name] if s)
-                    
-                    alias_params_parens = f'({alias_params})' if alias.has_paren else alias_params
-                    
-                    alias_line = f'{alias_qual_name}{alias_params_parens}'
-                    lines.append(textwrap.indent(alias_line, ' ' * 4))
-                    
-                    # Draw elipses to fill in for decorators that we don't care about
-                    row_dist = (aliases[i + 1].row if i + 1  < len(aliases) else func.row) - alias.row
-                    for _ in range(row_dist - 1):
-                        lines.append(textwrap.indent('...', ' ' * 4))
-
-                lines.append(textwrap.indent(textwrap.dedent(func.decl_line), ' ' * 4))
-                lines.append(textwrap.indent(textwrap.dedent(func.full_impl), ' ' * 8).rstrip('\n'))
-                
-        return '\n'.join(lines)
-    
-    def __hash__(self) -> int:
-        return hash((
-            self.qual_name,
-            self.path.resolve(),
-            self.row,
-            self.column,
-            self.metaclass,
-            tuple(self.bases),
-            self.decl_line.strip(),
-            self.full_impl.strip(),
-        ))
-        
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, ClassInfo):
-            return NotImplemented
-        return (
-            self.qual_name == other.qual_name and
-            self.path.resolve() == other.path.resolve() and
-            self.row == other.row and
-            self.column == other.column and
-            self.decl_line == other.decl_line and
-            self.full_impl == other.full_impl
-        )
 
 class WarningLevel(Enum):
     INFO    = auto()
@@ -390,6 +95,44 @@ class Warning:
             
         return f'{level_str} {raises_str}{message_str}'
 
+def timed(fn: Callable[P, T]) -> Callable[P, Tuple[float, T]]:
+    @functools.wraps(fn)
+    def wrapper(*args: Any, **kwargs: Any) -> Tuple[float, T]:
+        start = time.perf_counter()
+        result = fn(*args, **kwargs)
+        end = time.perf_counter()
+        elapsed = end - start
+        return elapsed, result
+    return wrapper
+
+def writeln(content: str, *, output: Optional[Path]) -> None:
+    if output:
+        content = f'{strip_ansi(content)}\n'
+        output.parent.mkdir(parents=True, exist_ok=True
+                            )
+        if not output.exists():
+            output.write_text(content, encoding='utf-8')
+        else:
+            with open(output, 'a') as file:
+                file.write(content)
+            
+    else:
+        click.echo(content)
+        
+def format_elapsed(elapsed: float) -> str:
+    if elapsed < 60:
+        # Show seconds with 4 significant figures
+        return f'{elapsed:.4g}s'
+    elif elapsed < 3600:
+        minutes = int(elapsed // 60)
+        seconds = elapsed % 60
+        return f'{minutes}m {seconds:.4g}s'
+    else:
+        hours = int(elapsed // 3600)
+        minutes = int((elapsed % 3600) // 60)
+        seconds = elapsed % 60
+        return f'{hours}h {minutes}m {seconds:.4g}s'
+    
 def validate_path_input(path: Path) -> bool:
     if not path.exists():
         click.echo('{}: Provided scan path does not exist: {}'.format(
@@ -473,17 +216,6 @@ def get_decorator_qual_name(expr: ast.expr, imports: dict[str, str]) -> str:
         return get_decorator_qual_name(expr.func, imports)
 
     return '<unknown>'
-
-def split_qual_name(qual_name: str) -> tuple[str, str]:
-    '''
-    Split a dotted qualified name into (module_name, real_name).
-    E.g., 'a.b.C' → ('a.b', 'C')
-    '''
-    parts = qual_name.rsplit('.', 1)
-    if len(parts) == 2:
-        return parts[0], parts[1]
-    else:
-        return '', parts[0]
 
 def get_func_arg_names(func_node: Union[ast.FunctionDef, ast.AsyncFunctionDef]) -> list[str]:
     args = func_node.args
@@ -854,89 +586,7 @@ def render_statistic(
         return
     
     writeln(content, output=output)
-
-@click.group()
-def cli() -> None:
-    pass
-
-@click.group()
-def scan() -> None:
-    '''
-    Scan the codebase for Reflexsive classes and aliases for viewing or validation.
-    '''
-    pass
-
-@scan.command('view')
-@click.option(
-    '--path', '-p', 
-    type=click.Path(writable=False, dir_okay=True, path_type=Path),
-    default=Path('.'), 
-    help='Path to scan, defaults to ./ if not specified'
-)
-@click.option(
-    '--output', '-o',
-    type=click.Path(writable=True, dir_okay=False, path_type=Path),
-    help='Write results to a file instead of printing to stdout - extension is infered if not specified'
-)
-@click.option(
-    '--mode', '-m', 
-    type=click.Choice(['classes', 'functions', 'both']), 
-    default='both', 
-    show_default=True, 
-    help='Select what to scan for'
-)
-@click.option(
-    '--format', '-f', 
-    type=click.Choice(['txt', 'json', 'yaml']), 
-    default='txt', 
-    show_default=True, 
-    help='Select the format of the output'
-)
-@click.option(
-    '--exclude-inherited/--include-inherited',
-    is_flag=True, 
-    default=False,
-    help='Exclude subclasses of Reflexsive'
-)
-@click.option(
-    '--exclude-metaclass/--include-metaclass',
-    is_flag=True, 
-    default=False,
-    help='Exclude metaclass of Reflexsive'
-)
-def view(
-        path                : Path, 
-        output              : Optional[Path],
-        mode                : str,
-        format              : str,
-        exclude_inherited   : bool, 
-        exclude_metaclass   : bool,
-    ) -> None:
-    '''Find all ReflexsiveMeta/Reflexsive classes in your codebase.''' 
-       
-    if not validate_path_input(path):
-        return
     
-    @timed
-    def run() -> Set[ClassInfo]:
-        return get_class_set_in_path(
-            path, 
-            mode=mode,
-            exclude_inherited=exclude_inherited, 
-            exclude_metaclass=exclude_metaclass
-        )
-
-    elapsed, results = run() 
-    
-    if output and not output.suffix:
-        output = output.with_suffix(f'.{format}')
-        
-    if output and output.exists() and output.is_file():
-        output.unlink()
-    
-    render_output(results, output=output, mode=mode, format=format)
-    render_statistic(elapsed, results, output=output, mode=mode, format=format)
-
 def get_validation_warnings(
         path                    : Path,
         *,
@@ -1035,80 +685,3 @@ def get_validation_warnings(
                 return warnings
             
     return sorted(warnings, key=lambda w: int(w.level.value), reverse=True)
-    
-@scan.command('validate')
-@click.option(
-    '--path', '-p', 
-    type=click.Path(writable=False, dir_okay=True, path_type=Path),
-    default=Path('.'), 
-    help='Path to scan'
-)
-@click.option(
-    '--exit/--no-exit', '-x',
-    default=False,
-    help='Stop validation and exit immediately on the first error encountered.'
-)
-@click.option(
-    '--strict/--no-strict', '-s',
-    default=False,
-    help='If enabled, fail on any validation error (non-zero exit).'
-)
-@click.option(
-    '--verbose',
-    is_flag=True,
-    default=False,
-    help='If enabled, the program will print all message types.'
-)
-@click.option(
-    '--no-warn',
-    is_flag=True,
-    default=False,
-    help='If enabled, the program suppress printing warning and info types.'
-)
-def validate(
-        path    : Path, 
-        exit    : bool,
-        strict  : bool,
-        verbose : bool,
-        no_warn : bool,
-    ) -> None:
-    ''' 
-    Validate all occurances of Reflexsive.alias, or any subclasses or Reflexsive's aliases.
-    
-    By default, prints error and warning messages. 
-    '''
-    if not validate_path_input(path):
-        return
-    
-    if no_warn:
-        minimum_warning_level = WarningLevel.ERROR
-    elif not verbose:
-        minimum_warning_level = WarningLevel.WARNING
-    else:
-        minimum_warning_level = WarningLevel.INFO
-
-    results = get_validation_warnings(path, exit=exit, strict=strict, minimum_warning_level=minimum_warning_level)
-    click.echo('\n'.join(res.message for res in results))
-
-@cli.command('generate-stubs')
-@click.argument('target')
-@click.option('--output', '-o', default='stubs/', help='Directory to output stub files')
-@click.option('--only-aliases', is_flag=True, help='Only include alias stubs')
-@click.option('--force', is_flag=True, help='Overwrite existing stub files')
-def generate_stubs_cmd(target: str, output: str, only_aliases: bool, force: bool) -> None:
-    '''Generate .pyi stubs for aliases.'''
-    click.echo(f'[NYI] Would generate stubs for {target} -> {output}, only_aliases={only_aliases}, force={force}')
-
-@cli.command()
-def version() -> None:
-    '''Show Reflexsive version.'''
-    from reflexsive import __name__, __version_short__, __version__
-    click.echo('{} {} ({})'.format(
-        click.style(__name__.title(), fg='bright_green', bold=True), __version_short__, __version__
-    ))
-
-# Add all command groups    
-cli.add_command(scan)
-    
-if __name__ == '__main__':
-    cli()

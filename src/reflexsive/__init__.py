@@ -1,3 +1,5 @@
+# reflexsive/__init__.py
+
 from .core import Reflexsive
 from .config import ReflexsiveOptions
 from .stubgen import (
