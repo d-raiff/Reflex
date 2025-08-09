@@ -48,7 +48,6 @@ pytest-cov = "^6.2.1"
 mypy = "^1.17.1"
 types-pyyaml = "^6.0.12.20250516"
 genbadge = {extras = ["coverage"], version = "^1.1.2"}
-twine = "^6.1.0"
 
 [tool.poetry.requires-plugins]
 poetry-dynamic-versioning = { version = ">=1.0.0,<2.0.0", extras = ["plugin"] }
